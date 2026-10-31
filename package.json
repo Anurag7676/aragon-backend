@@ -16,6 +16,8 @@
     "db:migrate": "tsx src/db/migrate.ts up",
     "db:migrate:down": "tsx src/db/migrate.ts down",
     "db:migrate:prod": "node dist/db/migrate.js up",
+    "db:seed": "tsx src/db/seed.ts",
+    "db:seed:prod": "node dist/db/seed.js",
     "setup:bucket": "tsx scripts/setup-bucket.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

@@ -216,6 +216,10 @@ npm run dev:worker            # worker, in a second terminal
 
 Leave `SMTP_USER` empty in development to print codes to the log instead of emailing them.
 
+To get a ready-to-use verified account (no email step), set `SEED_USER_EMAIL` and `SEED_USER_PASSWORD`
+in `.env` and run `npm run db:seed`. It's idempotent: running it again resets that account's password.
+On the server: `node --env-file=/opt/aragon/backend.env dist/db/seed.js`.
+
 ## Deployment
 
 Production runs in AWS `ap-southeast-1`, next to the Neon database:
