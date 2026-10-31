@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import type { Redis } from 'ioredis';
 import { createRedisConnection, redis } from '../../integrations/redis.js';
+import { Errors } from '../../lib/errors.js';
 import { logger } from '../../lib/logger.js';
 import type { ImageDto } from './images.dto.js';
 
@@ -40,7 +41,8 @@ class ImageEventHub {
 
   /** Subscribes to a user's channel only while that user has an open connection on this process. */
   async attach(userId: string, req: Request, res: Response): Promise<void> {
-    if (!this.subscriber) throw new Error('ImageEventHub not started');
+    // Only during startup/shutdown; the client reconnects on its own.
+    if (!this.subscriber) throw Errors.serviceUnavailable('EVENTS_UNAVAILABLE', 'Live updates are restarting.');
 
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
