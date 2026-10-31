@@ -1,0 +1,27 @@
+[Unit]
+Description=Photo Check image worker
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+User=aragon
+Group=aragon
+WorkingDirectory=/opt/aragon/app
+EnvironmentFile=/opt/aragon/backend.env
+ExecStart=/usr/bin/node dist/worker.js
+Restart=always
+RestartSec=3
+# Lets jobs in progress finish on stop/redeploy.
+TimeoutStopSec=60
+MemoryMax=1200M
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

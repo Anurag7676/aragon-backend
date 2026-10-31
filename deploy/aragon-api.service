@@ -1,0 +1,27 @@
+[Unit]
+Description=Photo Check API
+After=network-online.target redis-server.service
+Wants=network-online.target
+
+[Service]
+User=aragon
+Group=aragon
+WorkingDirectory=/opt/aragon/app
+EnvironmentFile=/opt/aragon/backend.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=3
+TimeoutStopSec=20
+MemoryMax=700M
+
+# Hardening: the API only reads its own files and talks to the network.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

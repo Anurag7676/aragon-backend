@@ -216,6 +216,24 @@ npm run dev:worker            # worker, in a second terminal
 
 Leave `SMTP_USER` empty in development to print codes to the log instead of emailing them.
 
+## Deployment
+
+Production runs in AWS `ap-southeast-1`, next to the Neon database:
+
+| Piece | Where |
+|---|---|
+| Frontend | AWS Amplify, built from the `aragon-frontend` repo on every push to `main` |
+| `/api/*` | An Amplify rewrite proxies to the API, so the browser sees a single origin and the refresh cookie stays first-party |
+| API + worker | One EC2 instance: nginx (Let's Encrypt) → Node, two systemd services (`deploy/*.service`), local Redis |
+| Files | Private S3 bucket, `prod/` prefix. The instance role may only read, write and delete under `prod/`; there are no AWS keys on the server |
+| Database | Neon Postgres |
+
+Secrets live in `/opt/aragon/backend.env` (mode 600). To redeploy after pushing to `main`:
+
+```bash
+ssh ubuntu@<server> 'sudo /opt/aragon/app/deploy/deploy.sh'
+```
+
 ## Tests
 
 ```bash
