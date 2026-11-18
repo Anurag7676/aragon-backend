@@ -18,6 +18,14 @@ export class UnreadableImageError extends Error {
   }
 }
 
+/** Thrown when the bytes are not a JPEG, PNG or HEIC image. */
+export class UnsupportedFormatError extends Error {
+  constructor(message = 'File is not a JPEG, PNG or HEIC image') {
+    super(message);
+    this.name = 'UnsupportedFormatError';
+  }
+}
+
 /** Detects the real format from the file's magic bytes, ignoring its name and declared type. */
 export async function detectFormat(buffer: Buffer): Promise<ImageFormat | null> {
   const type = await fileTypeFromBuffer(buffer);

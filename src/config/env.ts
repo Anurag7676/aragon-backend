@@ -51,6 +51,18 @@ const schema = z
     MAIL_FROM: z.string().optional(),
 
     WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),
+
+    // Jobs each pipeline service runs at once. Each job uses at most one CPU core.
+    CONVERSION_CONCURRENCY: z.coerce.number().int().positive().default(2),
+    COMPRESSION_CONCURRENCY: z.coerce.number().int().positive().default(2),
+    VARIANTS_CONCURRENCY: z.coerce.number().int().positive().default(2),
+
+    // Bearer token for the operations endpoint (queue depths). The endpoint is off when unset.
+    OPS_TOKEN: z.string().min(32).optional(),
+
+    // Demo only: makes one pipeline stage fail on purpose. Ignored unless explicitly allowed.
+    ALLOW_FAULT_INJECTION: booleanFromString.default(false),
+    PIPELINE_FAULT_STAGE: z.enum(['conversion', 'compression', 'variants']).optional(),
   })
   .refine((value) => value.NODE_ENV !== 'production' || (value.SMTP_USER && value.SMTP_PASS), {
     message: 'SMTP_USER and SMTP_PASS are required in production',

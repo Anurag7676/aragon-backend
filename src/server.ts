@@ -2,7 +2,7 @@ import { createApp } from './app.js';
 import { env } from './config/env.js';
 import './db/models/index.js';
 import { sequelize } from './db/sequelize.js';
-import { imageQueue, maintenanceQueue } from './integrations/queue.js';
+import { closeQueues } from './integrations/queue.js';
 import { redis } from './integrations/redis.js';
 import { logger } from './lib/logger.js';
 import { imageEventHub } from './modules/images/image-events.js';
@@ -25,7 +25,7 @@ async function shutdown(signal: string): Promise<void> {
   const closed = new Promise<void>((resolve) => server.close(() => resolve()));
   await imageEventHub.stop();
   await closed;
-  await Promise.allSettled([imageQueue.close(), maintenanceQueue.close(), sequelize.close()]);
+  await Promise.allSettled([closeQueues(), sequelize.close()]);
   await redis.quit();
   process.exit(0);
 }

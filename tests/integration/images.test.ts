@@ -5,7 +5,7 @@ import { createApp } from '../../src/app.js';
 import { uploadRules } from '../../src/config/rules.js';
 import { Image } from '../../src/db/models/index.js';
 import { enqueueImageProcessing } from '../../src/integrations/queue.js';
-import { storage } from '../../src/integrations/s3.js';
+import { pipelineKeys, storage } from '../../src/integrations/s3.js';
 import { createImage, createVerifiedUser } from '../helpers/factories.js';
 
 const app = createApp();
@@ -237,7 +237,12 @@ describe('DELETE /images/:id', () => {
     await api().delete(`/api/v1/images/${image.id}`).set(auth).expect(204);
     await api().get(`/api/v1/images/${image.id}`).set(auth).expect(404);
     expect(await Image.findByPk(image.id)).toBeNull();
-    expect(storage.deleteMany).toHaveBeenCalledWith([image.originalKey, 'display-key', 'thumb-key']);
+    expect(storage.deleteMany).toHaveBeenCalledWith([
+      image.originalKey,
+      'display-key',
+      'thumb-key',
+      ...pipelineKeys(user.id, image.id),
+    ]);
   });
 
   it('still succeeds when file clean-up fails', async () => {

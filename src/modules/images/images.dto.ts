@@ -1,5 +1,6 @@
-import type { Image, ImageStatus } from '../../db/models/index.js';
+import type { Image, ImageStatus, PipelineJob } from '../../db/models/index.js';
 import { storage } from '../../integrations/s3.js';
+import { toPipelineSummary, type PipelineSummaryDto } from '../pipeline/pipeline.dto.js';
 import { describeRejection, type RejectionReasonDto } from './rejection-reasons.js';
 
 export interface ImageDto {
@@ -14,9 +15,13 @@ export interface ImageDto {
   imageUrl: string | null;
   createdAt: string;
   processedAt: string | null;
+  /** Processing after acceptance; null until the photo is accepted. */
+  pipeline: PipelineSummaryDto | null;
 }
 
-export async function toImageDto(image: Image): Promise<ImageDto> {
+/** `pipeline` overrides the included association, for callers that just changed the job. */
+export async function toImageDto(image: Image, pipeline?: PipelineJob | null): Promise<ImageDto> {
+  const job = pipeline !== undefined ? pipeline : (image.pipeline ?? null);
   const [thumbnailUrl, imageUrl] = await Promise.all([
     image.thumbnailKey ? storage.readUrl(image.thumbnailKey) : null,
     image.displayKey ? storage.readUrl(image.displayKey) : null,
@@ -34,5 +39,6 @@ export async function toImageDto(image: Image): Promise<ImageDto> {
     imageUrl,
     createdAt: image.createdAt.toISOString(),
     processedAt: image.processedAt?.toISOString() ?? null,
+    pipeline: job ? toPipelineSummary(job) : null,
   };
 }

@@ -46,6 +46,13 @@ export const otpEmailLimiter = limiter('otp-email', {
   },
 });
 
+/** Per user on reprocess requests: each one re-runs every stage. */
+export const reprocessLimiter = limiter('reprocess', {
+  windowMs: 60_000,
+  limit: 30,
+  keyGenerator: (req) => req.user?.id ?? clientIp(req),
+});
+
 /** Per user on upload creation. */
 export const uploadLimiter = limiter('upload', {
   windowMs: 60_000,

@@ -21,10 +21,33 @@ export interface UploadForm {
 }
 
 export const imageKeys = (userId: string, imageId: string) => {
-  // Keys never contain user-supplied names.
+  // Keys never contain user-supplied names, and every file of a photo shares one prefix.
   const base = `${env.S3_KEY_PREFIX}users/${userId}/images/${imageId}`;
-  return { original: `${base}/original`, display: `${base}/display.jpg`, thumbnail: `${base}/thumbnail.webp` };
+  return {
+    original: `${base}/original`,
+    display: `${base}/display.jpg`,
+    thumbnail: `${base}/thumbnail.webp`,
+    // Pipeline intermediates, removed once the variants exist.
+    converted: `${base}/pipeline/converted.jpg`,
+    compressed: `${base}/pipeline/compressed.jpg`,
+    // Fixed names, so running the pipeline again overwrites instead of adding files.
+    variants: {
+      thumbnail: `${base}/variants/thumbnail.jpg`,
+      web: `${base}/variants/web.jpg`,
+      full: `${base}/variants/full.jpg`,
+    },
+  };
 };
+
+/** Every file the pipeline can write for a photo. */
+export const pipelineKeys = (userId: string, imageId: string): string[] => {
+  const keys = imageKeys(userId, imageId);
+  return [keys.converted, keys.compressed, ...Object.values(keys.variants)];
+};
+
+/** The object's permanent S3 address. The bucket is private, so it only works once signed. */
+export const objectUrl = (key: string): string =>
+  `https://${env.S3_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key.split('/').map(encodeURIComponent).join('/')}`;
 
 export const storage = {
   /**

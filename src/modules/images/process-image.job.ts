@@ -1,8 +1,9 @@
 import { UnrecoverableError } from 'bullmq';
 import { Op, QueryTypes, type Transaction } from 'sequelize';
 import { validationRules } from '../../config/rules.js';
-import { Image } from '../../db/models/index.js';
+import { Image, PipelineJob } from '../../db/models/index.js';
 import { sequelize } from '../../db/sequelize.js';
+import { enqueuePipelineStage } from '../../integrations/queue.js';
 import { imageKeys, storage } from '../../integrations/s3.js';
 import { logger } from '../../lib/logger.js';
 import { analyzeImage } from '../../processing/analyze-image.js';
@@ -55,9 +56,14 @@ export async function processImageJob(imageId: string): Promise<void> {
     const hash = analysis.perceptualHash !== undefined ? toSignedInt64(analysis.perceptualHash).toString() : null;
     if (hash && (await hasSimilarAcceptedImage(current, hash, transaction))) reasons.push('TOO_SIMILAR');
 
-    return current.update(
+    const accepted = reasons.length === 0;
+    // Created in the same transaction as the decision, so an accepted photo always has a pipeline job.
+    // If queueing it below fails, the maintenance sweep queues it later.
+    const pipeline = accepted ? await PipelineJob.create({ imageId: current.id, queuedAt: new Date() }, { transaction }) : null;
+
+    const updated = await current.update(
       {
-        status: reasons.length === 0 ? 'accepted' : 'rejected',
+        status: accepted ? 'accepted' : 'rejected',
         rejectionReasons: reasons,
         format: analysis.format,
         width: analysis.width,
@@ -73,6 +79,7 @@ export async function processImageJob(imageId: string): Promise<void> {
       },
       { transaction },
     );
+    return { image: updated, pipeline };
   });
 
   if (!decided) {
@@ -81,11 +88,17 @@ export async function processImageJob(imageId: string): Promise<void> {
     return;
   }
 
+  const { image: result, pipeline } = decided;
   logger.info(
-    { imageId, status: decided.status, reasons: decided.rejectionReasons, sharpness: decided.sharpness },
+    { imageId, status: result.status, reasons: result.rejectionReasons, sharpness: result.sharpness },
     'image processed',
   );
-  await publishImageEvent(decided.userId, { type: 'image.updated', image: await toImageDto(decided) });
+  if (pipeline) {
+    await enqueuePipelineStage('conversion', { imageId: result.id, run: pipeline.run }).catch((error: unknown) =>
+      logger.error({ err: error, imageId }, 'failed to queue pipeline; maintenance will retry'),
+    );
+  }
+  await publishImageEvent(result.userId, { type: 'image.updated', image: await toImageDto(result, pipeline) });
 }
 
 /** Near-duplicate check against the user's accepted photos, by Hamming distance between 64-bit hashes. */

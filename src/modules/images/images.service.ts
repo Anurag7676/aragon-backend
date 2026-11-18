@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { col, fn, Op, type WhereOptions } from 'sequelize';
 import { uploadRules } from '../../config/rules.js';
-import { Image, type ImageStatus } from '../../db/models/index.js';
+import { Image, PipelineJob, type ImageStatus } from '../../db/models/index.js';
 import { enqueueImageProcessing } from '../../integrations/queue.js';
-import { imageKeys, storage, type UploadForm } from '../../integrations/s3.js';
+import { imageKeys, pipelineKeys, storage, type UploadForm } from '../../integrations/s3.js';
 import { decodeCursor, encodeCursor } from '../../lib/cursor.js';
 import { Errors } from '../../lib/errors.js';
 import { logger } from '../../lib/logger.js';
@@ -35,8 +35,11 @@ const sanitizeFileName = (name: string) =>
     .slice(0, 255) || 'photo';
 
 /** Every lookup is scoped to the owner; another user's id behaves exactly like a missing one. */
-async function findOwnedImage(userId: string, imageId: string): Promise<Image> {
-  const image = await Image.findOne({ where: { id: imageId, userId } });
+export async function findOwnedImage(userId: string, imageId: string, withPipeline = false): Promise<Image> {
+  const image = await Image.findOne({
+    where: { id: imageId, userId },
+    ...(withPipeline ? { include: [{ model: PipelineJob, as: 'pipeline' }] } : {}),
+  });
   if (!image) throw Errors.notFound('Photo');
   return image;
 }
@@ -134,6 +137,7 @@ export const imagesService = {
 
     const rows = await Image.findAll({
       where: { [Op.and]: conditions },
+      include: [{ model: PipelineJob, as: 'pipeline' }],
       order: [
         ['createdAt', 'DESC'],
         ['id', 'DESC'],
@@ -144,13 +148,13 @@ export const imagesService = {
     const page = rows.slice(0, query.limit);
     const last = page.at(-1);
     return {
-      items: await Promise.all(page.map(toImageDto)),
+      items: await Promise.all(page.map((image) => toImageDto(image))),
       nextCursor: rows.length > query.limit && last ? encodeCursor({ createdAt: last.createdAt, id: last.id }) : null,
     };
   },
 
   async get(userId: string, imageId: string): Promise<ImageDto> {
-    return toImageDto(await findOwnedImage(userId, imageId));
+    return toImageDto(await findOwnedImage(userId, imageId, true));
   },
 
   async summary(userId: string): Promise<ImageSummary> {
@@ -176,10 +180,15 @@ export const imagesService = {
     };
   },
 
-  /** Deletes the record first, then the files. A worker still processing it notices and cleans up. */
+  /**
+   * Deletes the record first (its pipeline job and variants go with it), then the files. A worker still
+   * processing it notices and cleans up what it writes afterwards.
+   */
   async remove(userId: string, imageId: string): Promise<void> {
     const image = await findOwnedImage(userId, imageId);
     const keys = [image.originalKey, image.displayKey, image.thumbnailKey].filter((key) => key !== null);
+    // Pipeline files have fixed names; deleting ones that were never written is harmless.
+    if (image.status === 'accepted') keys.push(...pipelineKeys(image.userId, image.id));
     await image.destroy();
 
     await storage

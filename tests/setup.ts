@@ -27,7 +27,18 @@ vi.mock('../src/integrations/s3.js', async (importOriginal) => {
 vi.mock('../src/integrations/queue.js', () => ({
   IMAGE_QUEUE: 'image-processing',
   MAINTENANCE_QUEUE: 'maintenance',
+  PIPELINE_QUEUES: {
+    conversion: 'pipeline-conversion',
+    compression: 'pipeline-compression',
+    variants: 'pipeline-variants',
+  },
   enqueueImageProcessing: vi.fn(async () => ({})),
+  enqueuePipelineStage: vi.fn(async () => ({})),
+  requeuePipelineStage: vi.fn(async () => ({})),
+  pipelineJobState: vi.fn(async () => null),
+  pipelineJobId: (stage: string, data: { imageId: string; run: number }) => `${data.imageId}-r${data.run}-${stage}`,
+  getQueueStats: vi.fn(async () => ({})),
+  closeQueues: vi.fn(async () => []),
 }));
 
 const { sequelize } = await import('../src/db/sequelize.js');

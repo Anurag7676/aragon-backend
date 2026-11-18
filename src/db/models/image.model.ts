@@ -1,5 +1,13 @@
-import { DataTypes, Model, type CreationOptional, type InferAttributes, type InferCreationAttributes } from 'sequelize';
+import {
+  DataTypes,
+  Model,
+  type CreationOptional,
+  type InferAttributes,
+  type InferCreationAttributes,
+  type NonAttribute,
+} from 'sequelize';
 import { sequelize } from '../sequelize.js';
+import type { PipelineJob } from './pipeline-job.model.js';
 
 /**
  * pending_upload → queued → processing → accepted | rejected
@@ -35,6 +43,9 @@ export class Image extends Model<InferAttributes<Image>, InferCreationAttributes
   declare processedAt: Date | null;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+
+  /** Present when the query includes it. */
+  declare pipeline?: NonAttribute<PipelineJob | null>;
 }
 
 Image.init(

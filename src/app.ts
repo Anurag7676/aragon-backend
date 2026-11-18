@@ -9,6 +9,7 @@ import { logger } from './lib/logger.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { imagesRouter } from './modules/images/images.routes.js';
+import { opsRouter } from './modules/ops/ops.routes.js';
 
 export function createApp(): Express {
   const app = express();
@@ -43,6 +44,7 @@ export function createApp(): Express {
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/images', imagesRouter);
+  app.use('/api/v1/ops', opsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
