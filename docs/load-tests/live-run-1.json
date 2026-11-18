@@ -1,0 +1,103 @@
+{
+  "startedAt": "2026-11-18T08:43:50.198Z",
+  "config": {
+    "baseUrl": "https://18-141-81-79.sslip.io",
+    "images": 200,
+    "concurrency": 30,
+    "accounts": 34
+  },
+  "workersPerStage": {
+    "validation": 1,
+    "conversion": 1,
+    "compression": 1,
+    "variants": 1
+  },
+  "totals": {
+    "submitted": 200,
+    "uploadErrors": 0,
+    "rejected": 0,
+    "completed": 200,
+    "failed": 0
+  },
+  "wallClockMs": 153623,
+  "uploadPhaseMs": 48530,
+  "throughputPerMinute": 78.6,
+  "endToEndMs": {
+    "count": 200,
+    "p50": 64092,
+    "p95": 113589,
+    "p99": 117131,
+    "max": 122139
+  },
+  "pipelineOnlyMs": {
+    "count": 200,
+    "p50": 1328,
+    "p95": 2122,
+    "p99": 2584,
+    "max": 2870
+  },
+  "stages": {
+    "conversion": {
+      "waitMs": {
+        "count": 200,
+        "p50": 18,
+        "p95": 152,
+        "p99": 352,
+        "max": 515
+      },
+      "runMs": {
+        "count": 200,
+        "p50": 306,
+        "p95": 706,
+        "p99": 844,
+        "max": 1036
+      }
+    },
+    "compression": {
+      "waitMs": {
+        "count": 200,
+        "p50": 15,
+        "p95": 53,
+        "p99": 72,
+        "max": 237
+      },
+      "runMs": {
+        "count": 200,
+        "p50": 475,
+        "p95": 754,
+        "p99": 913,
+        "max": 989
+      }
+    },
+    "variants": {
+      "waitMs": {
+        "count": 200,
+        "p50": 14,
+        "p95": 45,
+        "p99": 133,
+        "max": 515
+      },
+      "runMs": {
+        "count": 200,
+        "p50": 476,
+        "p95": 850,
+        "p99": 984,
+        "max": 1152
+      }
+    }
+  },
+  "peakQueueWaiting": {
+    "validation": 138,
+    "conversion": 0,
+    "compression": 0,
+    "variants": 1
+  },
+  "compression": {
+    "averageSavedPercent": 67.1,
+    "bytesBefore": 122270816,
+    "bytesAfter": 40651762
+  },
+  "rejectedReasons": {},
+  "failures": [],
+  "uploadErrorSamples": []
+}

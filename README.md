@@ -199,14 +199,17 @@ docker compose -f docker-compose.local.yml up -d --scale validation=3 --scale co
 docker compose -f docker-compose.local.yml run --rm api node dist/load-test/cleanup.js
 ```
 
-**Results so far.** These were run with Docker on a laptop VM with 4 cores, sending files to S3 in
-Singapore. The full reports are in [`docs/load-tests/`](docs/load-tests).
+**Results.** The full reports are in [`docs/load-tests/`](docs/load-tests).
 
-| Run | Workers (validation / conversion / compression / variants) | Photos | Completed | Throughput | Pipeline p50 / p95 | Peak queue (val / conv / comp / var) |
-|---|---|---|---|---|---|---|
-| 1 | 1 / 1 / 1 / 1 | 100 | 100 | 51 /min | 6.0 s / 13.8 s | 70 / 9 / 4 / 3 |
-| 2 | 3 / 2 / 1 / 1 | 100 | 100 | 57 /min | 37.5 s / 51.5 s | 28 / 34 / 26 / 18 |
-| 3 | 3 / 2 / 1 / 1, one conversion container **killed** mid-run | 60 | 60 | 33 /min | 18.8 s / 29.2 s | 17 / 17 / 10 / 5 |
+| Run | Where | Workers (validation / conversion / compression / variants) | Photos | Completed | Throughput | Pipeline p50 / p95 | Peak queue (val / conv / comp / var) |
+|---|---|---|---|---|---|---|---|
+| Live 1 | Production server (2 vCPU, S3 in the same region) | 1 / 1 / 1 / 1 | 200 | 200 | 79 /min | 1.3 s / 2.1 s | 138 / 0 / 0 / 1 |
+| Local 1 | Laptop Docker VM (4 cores, S3 in another country) | 1 / 1 / 1 / 1 | 100 | 100 | 51 /min | 6.0 s / 13.8 s | 70 / 9 / 4 / 3 |
+| Local 2 | Laptop | 3 / 2 / 1 / 1 | 100 | 100 | 57 /min | 37.5 s / 51.5 s | 28 / 34 / 26 / 18 |
+| Local 3 | Laptop, one conversion container **killed** mid-run | 3 / 2 / 1 / 1 | 60 | 60 | 33 /min | 18.8 s / 29.2 s | 17 / 17 / 10 / 5 |
+
+"Pipeline" is the time from acceptance to the three variants existing. Upload-to-variants time also
+includes waiting for validation, which is where the queue builds.
 
 What these runs show:
 - **With one copy of each, validation (face detection) is the bottleneck.** The pipeline queues stay
@@ -408,19 +411,24 @@ verified account without the email step, set `SEED_USER_EMAIL` / `SEED_USER_PASS
 
 ## Deployment
 
-Production runs in AWS `ap-southeast-1`, next to the Neon database:
+Production runs in AWS `ap-southeast-1`:
 
 | Piece | Where |
 |---|---|
 | Frontend | AWS Amplify, built from `aragon-frontend` on every push to `main` |
 | `/api/*` | An Amplify rewrite proxies to the API, so the browser sees one origin |
-| API, validation worker, three pipeline services | One EC2 instance, Docker Compose (`docker-compose.yml`, host networking), nginx with Let's Encrypt in front, Redis on the host |
-| Files | Private S3 bucket, `prod/` prefix. The instance role can only read, write and delete under `prod/`; there are no AWS keys on the server |
-| Database | Neon Postgres |
+| API, validation worker, three pipeline services | One EC2 instance, Docker Compose (`docker-compose.yml`, host networking), nginx with Let's Encrypt in front |
+| Postgres and Redis | Containers on the same instance (`COMPOSE_PROFILES=infra`), bound to `127.0.0.1`. A managed database or Redis works too: leave the profile off and point `DATABASE_URL` / `REDIS_URL` at it |
+| Files | Private S3 bucket, `prod/` prefix. The instance role can only read, write and delete under `prod/`; there are no AWS keys on the server. IMDSv2 is required |
+| Firewall | SSH only from the admin IP; HTTP and HTTPS public |
 
-Secrets live in `/opt/aragon/backend.env` (mode 600).
+Secrets live in `/opt/aragon/backend.env`. Compose settings (`COMPOSE_PROFILES`, `POSTGRES_PASSWORD`)
+live in `/opt/aragon/app/.env`. Both are mode 600 and owned by root.
 
-- **First move from the round 1 systemd services:** `sudo /opt/aragon/app/deploy/switch-to-docker.sh`.
+- **New server:** clone into `/opt/aragon/app`, write the two env files, copy `deploy/nginx.conf`
+  into nginx with the host name, run certbot, then run `deploy.sh`.
+- **Moving an existing round 1 server off its systemd services:**
+  `sudo /opt/aragon/app/deploy/switch-to-docker.sh`.
 - **Redeploy** (pull, build, migrate, restart):
 
 ```bash
