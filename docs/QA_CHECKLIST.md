@@ -65,3 +65,21 @@ Manual end-to-end checks against a running frontend, API and worker. Automated c
 | S4 | Open an S3 object URL without a signature | AccessDenied |
 | S5 | Download the stored display image and inspect EXIF | No GPS or camera metadata |
 | S6 | Call `/auth/forgot-password` 11 times for one email within 15 minutes | 429 |
+
+## Media pipeline (round 2)
+
+`npm run demo` prints every stage live. The commands assume the local stack (`docker-compose.local.yml`).
+
+| # | Steps | Expected |
+|---|---|---|
+| M1 | `npm run demo -- upload <portrait>.heic` | validation → queued → converting → compressing → generating_variants → completed; source `heic`; three JPEG variants (256×256, ≤1280 px, full size) |
+| M2 | `GET /images/:id/variants`, open each URL | Three signed URLs that load; an unsigned S3 URL is AccessDenied |
+| M3 | Upload a photo that fails validation | No pipeline job; `GET /images/:id/pipeline` is 404 |
+| M4 | Turn on fault injection for compression, upload | `failed in compression: INJECTED_FAILURE`, with the message in `GET /pipeline` |
+| M5 | Turn it off, `npm run demo -- reprocess <id>` | Run 2 completes; still exactly 3 rows in `image_variants`; same S3 keys |
+| M6 | Reprocess while a run is in progress | 409 `PIPELINE_BUSY` |
+| M7 | Reprocess a rejected photo | 409 `NOT_ACCEPTED` |
+| M8 | `docker kill` a conversion container during a load test | Every photo completes; no image has more or fewer than 3 variants |
+| M9 | Delete a photo mid-pipeline | Rows gone; no files left under its prefix |
+| M10 | `GET /ops/pipeline` without a token / with a user token / with `OPS_TOKEN` | 401 / 401 / 200 with counts only |
+| M11 | `docker compose up -d --scale variants=3`, then `GET /ops/pipeline` | `variants.workers` is 3 |

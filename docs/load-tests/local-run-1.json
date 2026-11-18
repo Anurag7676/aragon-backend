@@ -1,0 +1,103 @@
+{
+  "startedAt": "2026-11-18T08:11:31.232Z",
+  "config": {
+    "baseUrl": "http://localhost:4090",
+    "images": 100,
+    "concurrency": 20,
+    "accounts": 17
+  },
+  "workersPerStage": {
+    "validation": 1,
+    "conversion": 1,
+    "compression": 1,
+    "variants": 1
+  },
+  "totals": {
+    "submitted": 100,
+    "uploadErrors": 0,
+    "rejected": 0,
+    "completed": 100,
+    "failed": 0
+  },
+  "wallClockMs": 118014,
+  "uploadPhaseMs": 29628,
+  "throughputPerMinute": 51.2,
+  "endToEndMs": {
+    "count": 100,
+    "p50": 45955,
+    "p95": 91881,
+    "p99": 99448,
+    "max": 102599
+  },
+  "pipelineOnlyMs": {
+    "count": 100,
+    "p50": 5980,
+    "p95": 13819,
+    "p99": 19627,
+    "max": 27027
+  },
+  "stages": {
+    "conversion": {
+      "waitMs": {
+        "count": 100,
+        "p50": 1034,
+        "p95": 6854,
+        "p99": 10603,
+        "max": 11773
+      },
+      "runMs": {
+        "count": 100,
+        "p50": 1059,
+        "p95": 5267,
+        "p99": 9060,
+        "max": 19655
+      }
+    },
+    "compression": {
+      "waitMs": {
+        "count": 100,
+        "p50": 8,
+        "p95": 1491,
+        "p99": 2733,
+        "max": 2756
+      },
+      "runMs": {
+        "count": 100,
+        "p50": 808,
+        "p95": 2244,
+        "p99": 5393,
+        "max": 6230
+      }
+    },
+    "variants": {
+      "waitMs": {
+        "count": 100,
+        "p50": 9,
+        "p95": 1023,
+        "p99": 1270,
+        "max": 2136
+      },
+      "runMs": {
+        "count": 100,
+        "p50": 1050,
+        "p95": 1902,
+        "p99": 3178,
+        "max": 4502
+      }
+    }
+  },
+  "peakQueueWaiting": {
+    "validation": 70,
+    "conversion": 9,
+    "compression": 4,
+    "variants": 3
+  },
+  "compression": {
+    "averageSavedPercent": 67.1,
+    "bytesBefore": 61116998,
+    "bytesAfter": 20327152
+  },
+  "rejectedReasons": {},
+  "failures": [],
+  "uploadErrorSamples": []
+}
