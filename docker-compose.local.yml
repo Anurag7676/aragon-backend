@@ -1,0 +1,83 @@
+# The whole backend on a laptop, with its own Postgres and Redis. Files still go to the S3 bucket
+# and prefix in .env (dev/ by default).
+#
+#   docker compose -f docker-compose.local.yml up -d --build
+#   docker compose -f docker-compose.local.yml up -d --scale variants=3
+#
+# The API is on http://localhost:4090.
+
+name: aragon-local
+
+x-service: &service
+  image: aragon-backend:latest
+  build: .
+  env_file: .env
+  environment:
+    NODE_ENV: production
+    PORT: '4000'
+    DATABASE_URL: postgresql://aragon:aragon@postgres:5432/aragon
+    DATABASE_SSL: 'false'
+    DATABASE_POOL_MAX: '4'
+    REDIS_URL: redis://redis:6379
+    ALLOW_FAULT_INJECTION: ${ALLOW_FAULT_INJECTION:-false}
+    PIPELINE_FAULT_STAGE: ${PIPELINE_FAULT_STAGE:-}
+  restart: unless-stopped
+  init: true
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+    redis: { condition: service_healthy }
+
+x-worker: &worker
+  <<: *service
+  stop_grace_period: 75s
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment: { POSTGRES_USER: aragon, POSTGRES_PASSWORD: aragon, POSTGRES_DB: aragon }
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U aragon']
+      interval: 2s
+      retries: 30
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      retries: 30
+
+  migrate:
+    <<: *service
+    command: ['node', 'dist/db/migrate.js', 'up']
+    restart: 'no'
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *service
+    command: ['node', 'dist/server.js']
+    ports: ['4090:4000']
+
+  validation:
+    <<: *worker
+    command: ['node', 'dist/worker.js']
+
+  conversion:
+    <<: *worker
+    command: ['node', 'dist/services/conversion.js']
+
+  compression:
+    <<: *worker
+    command: ['node', 'dist/services/compression.js']
+
+  variants:
+    <<: *worker
+    command: ['node', 'dist/services/variants.js']
+
+volumes:
+  postgres-data:
+  redis-data:

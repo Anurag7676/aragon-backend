@@ -7,4 +7,6 @@ coverage/
 !.env.test
 *.log
 .DS_Store
+# Load-test tokens and reports (tokens are live bearer tokens).
+load-test-results/
 .claude/

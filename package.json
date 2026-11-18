@@ -25,6 +25,10 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:prod": "node dist/db/seed.js",
     "setup:bucket": "tsx scripts/setup-bucket.ts",
+    "demo": "tsx scripts/demo.ts",
+    "load-test": "tsx scripts/load-test/run.ts",
+    "load-test:seed": "LOG_LEVEL=silent tsx src/load-test/seed-users.ts",
+    "load-test:cleanup": "tsx src/load-test/cleanup.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

@@ -1,0 +1,57 @@
+# Production on one EC2 host. Every process is its own service, so each one scales on its own:
+#
+#   docker compose up -d --build
+#   docker compose up -d --scale conversion=3 --scale variants=2
+#
+# Host networking lets the containers reach the host's Redis and lets nginx reach the API on
+# 127.0.0.1:4000. It also keeps the instance-role endpoint (IMDSv2, hop limit 1) reachable, so there
+# are no AWS keys anywhere. Postgres is Neon; secrets come from the host's env file.
+
+name: aragon
+
+x-service: &service
+  image: aragon-backend:latest
+  build: .
+  network_mode: host
+  env_file: ${ENV_FILE:-/opt/aragon/backend.env}
+  environment:
+    # Failure demo, off unless both are given when (re)creating a service, e.g.
+    #   ALLOW_FAULT_INJECTION=true PIPELINE_FAULT_STAGE=compression docker compose up -d --no-deps compression
+    ALLOW_FAULT_INJECTION: ${ALLOW_FAULT_INJECTION:-false}
+    PIPELINE_FAULT_STAGE: ${PIPELINE_FAULT_STAGE:-}
+  restart: unless-stopped
+  init: true
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '3' }
+
+# Workers finish the jobs they have started before exiting (stage timeout is 60 s).
+x-worker: &worker
+  <<: *service
+  stop_grace_period: 75s
+
+services:
+  api:
+    <<: *service
+    command: ['node', 'dist/server.js']
+    healthcheck:
+      test: ['CMD-SHELL', "node -e \"fetch('http://127.0.0.1:' + (process.env.PORT || 4000) + '/health').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  validation:
+    <<: *worker
+    command: ['node', 'dist/worker.js']
+
+  conversion:
+    <<: *worker
+    command: ['node', 'dist/services/conversion.js']
+
+  compression:
+    <<: *worker
+    command: ['node', 'dist/services/compression.js']
+
+  variants:
+    <<: *worker
+    command: ['node', 'dist/services/variants.js']

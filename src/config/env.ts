@@ -61,8 +61,12 @@ const schema = z
     OPS_TOKEN: z.string().min(32).optional(),
 
     // Demo only: makes one pipeline stage fail on purpose. Ignored unless explicitly allowed.
-    ALLOW_FAULT_INJECTION: booleanFromString.default(false),
-    PIPELINE_FAULT_STAGE: z.enum(['conversion', 'compression', 'variants']).optional(),
+    // An empty value (as Compose passes for an unset variable) means off.
+    ALLOW_FAULT_INJECTION: z.preprocess((value) => value || undefined, booleanFromString.default(false)),
+    PIPELINE_FAULT_STAGE: z.preprocess(
+      (value) => value || undefined,
+      z.enum(['conversion', 'compression', 'variants']).optional(),
+    ),
   })
   .refine((value) => value.NODE_ENV !== 'production' || (value.SMTP_USER && value.SMTP_PASS), {
     message: 'SMTP_USER and SMTP_PASS are required in production',

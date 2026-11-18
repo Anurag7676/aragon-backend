@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+tests
+scripts
+deploy
+docs
+.git
+.env
+.env.*
+!.env.example
+load-test-results
+*.log

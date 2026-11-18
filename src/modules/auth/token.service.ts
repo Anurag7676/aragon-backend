@@ -23,16 +23,19 @@ export interface IssuedRefreshToken {
   expiresAt: Date;
 }
 
-export async function signAccessToken(userId: string): Promise<{ token: string; expiresIn: number }> {
+export async function signAccessToken(
+  userId: string,
+  ttlSeconds: number = env.ACCESS_TOKEN_TTL_SECONDS,
+): Promise<{ token: string; expiresIn: number }> {
   const token = await new SignJWT({})
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(userId)
     .setIssuer(ISSUER)
     .setAudience(AUDIENCE)
     .setIssuedAt()
-    .setExpirationTime(`${env.ACCESS_TOKEN_TTL_SECONDS}s`)
+    .setExpirationTime(`${ttlSeconds}s`)
     .sign(accessSecret);
-  return { token, expiresIn: env.ACCESS_TOKEN_TTL_SECONDS };
+  return { token, expiresIn: ttlSeconds };
 }
 
 export async function verifyAccessToken(token: string): Promise<{ userId: string }> {
